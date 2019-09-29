@@ -1,45 +1,86 @@
+import os
 import pandas
+import numpy
 from scipy.sparse import csr_matrix, vstack
+from tqdm import tqdm
 
 
-def load(chunksize=1e6):
-    '''
-    Loads the MyAnimeList dataset in chunks.
+class MyAnimeList:
 
-    Returns:
-        X : sparse matrix of dimension #users times #animes
-        cindex : list of column indices of X (anime id)
-        rindex : list of row indices of X (users)
-
-    '''
-
-    reader = pandas.read_csv('data/UserAnimeList.csv', chunksize = chunksize)
-
-    chunks = []
-    cindex = []
-    rindex = []
-
-    # Each chunk is in dataframe format
-    for chunk in reader:  
-        chunk = chunk[['username', 'anime_id', 'my_score']]
-        chunk = chunk[chunk.my_score != 0]
+    def __init__(self,extension="",debug=False,chunksize=1e6):
+        if extension != "":
+            extension = "_"+extension
+        self.animes = pandas.read_csv(f'data/AnimeList{extension}.csv')
+        self.users  = pandas.read_csv(f'data/UserList{extension}.csv')
+        self.X,self.cindex,self.rindex = self.read_useranimelist(f'data/UserAnimeList{extension}.csv',debug,chunksize)
+    
+    
+    def split(self, k=5, seed=1234):
+        """
+        Partition dataset into k parts. K training and one test set.
         
-        # Transform DataFrame to (N=#users x K=#animes) matrix
-        chunk = chunk.pivot(index="username", columns="anime_id", values="my_score")
+        Returns:
+            Xtest: list (if k>1) of k-1 sparse matrices or (if k=1) sparse matrix
+            Xtrain: sparse matrix
+            R: list of k permutation vectors
+            
+        """
+        n = self.X.shape[0]
+
+        rstate = numpy.random.mtrand.RandomState(seed)
+
+        R = numpy.array_split(rstate.permutation(n),k+1)
         
-        rindex = rindex + chunk.index.tolist()
-        cindex = cindex + chunk.columns.tolist()
-        
-        chunks.append(chunk)
+        if k == 1:
+            Xtrain = self.X[R[0]]
+        else:
+            Xtrain = [self.X[r] for r in R[:-1]]  # k-fold Training data
 
-    for chunk in chunks:
-        chunk = chunk.reindex(columns = cindex)
-        chunk = csr_matrix(chunk.fillna(0))
+        Xtest  = self.X[R[-1]] # Test data
 
-    X = vstack(chunks, format="csr")
+        return Xtrain,Xtest,R
+    
+    
+    def get_anime_by_id(self, id_):
+        return self.animes[self.animes.anime_id == id_].iloc[0]
 
-    return X, cindex, rindex
+    
+    def read_useranimelist(self, path, debug=False, chunksize=1e6):
+        '''
+        Reads the MyAnimeList dataset in chunks. If debug=True: only loads
+        a single chunk.
 
+        Returns:
+            X : sparse matrix of dimension #users times #animes
+            cindex : list of column indices of X (anime id)
+            rindex : list of row indices of X (users)
 
-def download():
-    return None
+        '''
+
+        reader = pandas.read_csv(path,chunksize=chunksize)
+
+        chunks = []
+        cindex = sorted(self.animes.anime_id.tolist())
+        rindex = []
+
+        # Each chunk is in dataframe format
+        for chunk in tqdm(reader):
+            chunk = chunk[['username', 'anime_id', 'my_score']]
+            chunk = chunk[chunk.my_score != 0]
+
+            # Transform DataFrame to (N=#users x K=#animes) matrix
+            chunk = chunk.pivot(index="username", columns="anime_id", values="my_score")
+            chunk = chunk.reindex(columns = cindex)
+
+            rindex = rindex + chunk.index.tolist()
+
+            chunk = csr_matrix(chunk.fillna(0))
+
+            chunks.append(chunk)
+            
+            if debug == True:  # load only one chunk
+                break
+
+        X = vstack(chunks, format="csr")
+
+        return X, cindex, rindex
