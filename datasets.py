@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 class MyAnimeList:
 
-    def __init__(self,extension="",debug=False,chunksize=1e6):
+    def __init__(self,extension="",debug=False, chunksize=1e6):
         if extension != "":
             extension = "_"+extension
         self.animes = pandas.read_csv(f'data/AnimeList{extension}.csv')
@@ -62,7 +62,7 @@ class MyAnimeList:
         chunks = []
         cindex = sorted(self.animes.anime_id.tolist())
         rindex = []
-
+        
         # Each chunk is in dataframe format
         for chunk in tqdm(reader):
             chunk = chunk[['username', 'anime_id', 'my_score']]
@@ -70,16 +70,26 @@ class MyAnimeList:
 
             # Transform DataFrame to (N=#users x K=#animes) matrix
             chunk = chunk.pivot(index="username", columns="anime_id", values="my_score")
+            
+            if debug:  # load only one chunk, dont populate with all animes
+                cindex = sorted(chunk.columns)
+                chunk = chunk.reindex(columns = cindex)
+                rindex = rindex + chunk.index.tolist()
+                chunk = csr_matrix(chunk.fillna(0))
+                chunks.append(chunk)
+                break
+                
+            # populate dataframe with all anime columns            
             chunk = chunk.reindex(columns = cindex)
-
+            
+            # add current chunk user positions to row index list
             rindex = rindex + chunk.index.tolist()
-
+            
+            # convert to scipy sparse matrix
             chunk = csr_matrix(chunk.fillna(0))
 
             chunks.append(chunk)
-            
-            if debug == True:  # load only one chunk
-                break
+
 
         X = vstack(chunks, format="csr")
 
