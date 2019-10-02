@@ -1,7 +1,8 @@
 import os
 import pandas
 import numpy
-from scipy.sparse import csr_matrix, vstack
+import pickle
+from scipy.sparse import csc_matrix, vstack
 from tqdm import tqdm
 
 
@@ -56,6 +57,13 @@ class MyAnimeList:
             rindex : list of row indices of X (users)
 
         '''
+        if not debug:
+            if os.path.exists("MyAnimeList.pickle"):
+                pickle_in = open("MyAnimeList.pickle","rb")
+                data = pickle.load(pickle_in)
+                pickle_in.close()
+                return data.X, data.cindex, data.rindex
+            
 
         reader = pandas.read_csv(path,chunksize=chunksize)
 
@@ -70,15 +78,7 @@ class MyAnimeList:
 
             # Transform DataFrame to (N=#users x K=#animes) matrix
             chunk = chunk.pivot(index="username", columns="anime_id", values="my_score")
-            
-            if debug:  # load only one chunk, dont populate with all animes
-                cindex = sorted(chunk.columns)
-                chunk = chunk.reindex(columns = cindex)
-                rindex = rindex + chunk.index.tolist()
-                chunk = csr_matrix(chunk.fillna(0))
-                chunks.append(chunk)
-                break
-                
+
             # populate dataframe with all anime columns            
             chunk = chunk.reindex(columns = cindex)
             
@@ -86,11 +86,13 @@ class MyAnimeList:
             rindex = rindex + chunk.index.tolist()
             
             # convert to scipy sparse matrix
-            chunk = csr_matrix(chunk.fillna(0))
+            chunk = csc_matrix(chunk.fillna(0))
 
             chunks.append(chunk)
+            
+            if debug: break  # Load only one chunk.
 
 
-        X = vstack(chunks, format="csr")
+        X = vstack(chunks, format="csc")
 
         return X, cindex, rindex
