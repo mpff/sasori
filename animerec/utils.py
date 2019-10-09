@@ -1,5 +1,6 @@
 import time
 import requests
+import pandas
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -55,27 +56,29 @@ class MatrixFactorization():
         
         
     def predict(self, x):
-        x = (u - self.mu - self.bv)
+        u = (x - self.mu - self.bv)
         
         # Calculate user bias.
-        n, xbar = (0, 0)
+        n, bu = (0, 0)
         for i,e in enumerate(x):
             if not np.isnan(e):
                 n += 1
-                xbar += x[i]
-                
-        x = x - xbar/n
+                bu += u[i]
+        bu = bu/n
+        
+        u = u - bu
         
         # Calculate user feacture vector and anime feature covariance matrix.
-        vx_, vcov_ = (0,0)
-        for i,e in enumerate(x):
+        vu_, vcov_ = (0,0)
+        for i,e in enumerate(u):
             if not np.isnan(e):
-                vx_ += self.V[i,:]*x[i]
+                vu_ += self.V[i,:]*u[i]
                 vcov_ += np.outer(self.V[i,:], self.V[i,:])
         vcov_ = np.linalg.inv(vcov_)
     
         # Predict scores.
-        xhat = vcov_.dot(vx_)
+        uhat = vcov_.dot(vu_)
+        xhat = uhat.dot(self.V.T) + bu + self.bv + self.mu
         
         return xhat
            
@@ -100,20 +103,21 @@ class MatrixFactorization():
 
     
     def print_features(self, data):
-        for k in range(model.k):
-            jmax = model.V[:,k].argmax()
-            jmin = model.V[:,k].argmin()
+        for k in range(self.k):
+            jmax = self.V[:,k].argmax()
+            jmin = self.V[:,k].argmin()
             idmax = data.cindex[jmax]
             idmin = data.cindex[jmin]
             amax = data.get_anime_by_id(idmax)
             amin = data.get_anime_by_id(idmin)
             str_ = (
                 f'Feature {k+1}:\n'
-                f'\tmax : ({model.V[jmax,k]:+2.1f}) {amax.title}\n'
-                f'\tmin : ({model.V[jmin,k]:+2.1f}) {amin.title}'
+                f'\tmax : ({self.V[jmax,k]:+2.1f}) {amax.title}\n'
+                f'\tmin : ({self.V[jmin,k]:+2.1f}) {amin.title}'
             )
-        print(str_)
+            print(str_)
 
+    
     
 def get_user_anime_list(user_id):
     '''
@@ -178,7 +182,7 @@ def get_user_anime_list_from_json(json):
 
 def get_score_vector_from_user_anime_list(user_anime_list, cindex):
     
-    vec = pd.Series(index=cindex)
+    vec = pandas.Series(index=cindex)
     
     for anime in user_anime_list:
         if anime['status'] not in [2,4]:  # Only completed and dropped animes.
@@ -188,3 +192,15 @@ def get_score_vector_from_user_anime_list(user_anime_list, cindex):
     vec = vec[cindex]
     
     return np.array(vec)
+
+
+
+def prediction_to_dataframe(xhat, user_anime_list, cindex):
+    
+    prediction = pandas.Series(xhat, index=cindex)
+    
+    watched = [a['id_ref'] for a in user_anime_list if a['id_ref'] in prediction.index]
+    prediction = prediction.drop(list(watched))  # Note: columns == anime_ids's
+    
+    return prediction
+    
