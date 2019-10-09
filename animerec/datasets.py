@@ -58,8 +58,8 @@ class MyAnimeList:
 
         '''
         if not debug:
-            if os.path.exists("MyAnimeList.pickle"):
-                pickle_in = open("MyAnimeList.pickle","rb")
+            if os.path.exists("data/MyAnimeList.pickle"):
+                pickle_in = open("data/MyAnimeList.pickle","rb")
                 data = pickle.load(pickle_in)
                 pickle_in.close()
                 return data.X, data.cindex, data.rindex
