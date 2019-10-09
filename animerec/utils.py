@@ -52,6 +52,32 @@ class MatrixFactorization():
             print(f"Iteration {t:2d} :  Training Error = {self.error[-1]:3.4f}  Time = {time.time()-tstart:.2f}s")
             
         self.plot_loss()
+        
+        
+    def predict(self, x):
+        x = (u - self.mu - self.bv)
+        
+        # Calculate user bias.
+        n, xbar = (0, 0)
+        for i,e in enumerate(x):
+            if not np.isnan(e):
+                n += 1
+                xbar += x[i]
+                
+        x = x - xbar/n
+        
+        # Calculate user feacture vector and anime feature covariance matrix.
+        vx_, vcov_ = (0,0)
+        for i,e in enumerate(x):
+            if not np.isnan(e):
+                vx_ += self.V[i,:]*x[i]
+                vcov_ += np.outer(self.V[i,:], self.V[i,:])
+        vcov_ = np.linalg.inv(vcov_)
+    
+        # Predict scores.
+        xhat = vcov_.dot(vx_)
+        
+        return xhat
            
             
     def loss(self, X):
@@ -72,6 +98,21 @@ class MatrixFactorization():
         plt.legend()
         plt.show()
 
+    
+    def print_features(self, data):
+        for k in range(model.k):
+            jmax = model.V[:,k].argmax()
+            jmin = model.V[:,k].argmin()
+            idmax = data.cindex[jmax]
+            idmin = data.cindex[jmin]
+            amax = data.get_anime_by_id(idmax)
+            amin = data.get_anime_by_id(idmin)
+            str_ = (
+                f'Feature {k+1}:\n'
+                f'\tmax : ({model.V[jmax,k]:+2.1f}) {amax.title}\n'
+                f'\tmin : ({model.V[jmin,k]:+2.1f}) {amin.title}'
+            )
+        print(str_)
 
     
 def get_user_anime_list(user_id):
@@ -135,7 +176,7 @@ def get_user_anime_list_from_json(json):
 
 
 
-def user_anime_list_to_score_vector(user_anime_list, cindex):
+def get_score_vector_from_user_anime_list(user_anime_list, cindex):
     
     vec = pd.Series(index=cindex)
     
