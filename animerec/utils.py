@@ -13,6 +13,7 @@ class MatrixFactorization():
 
         
     def fit(self, X, steps):
+        ''' Performs Sparse Matrix Factorization with bias terms. '''
         self.U = np.random.randn(X.shape[0],self.k)
         self.V = np.random.randn(X.shape[1],self.k)
         self.bu = np.zeros(X.shape[0])
@@ -26,7 +27,7 @@ class MatrixFactorization():
         for t in range(1,steps+1):
             tstart = time.time()
             
-            # Update U
+            # Update user matrix U.
             X = X.tocsr()
             for i in range(self.U.shape[0]):
                 jvec = X.getrow(i).nonzero()[1]
@@ -36,7 +37,7 @@ class MatrixFactorization():
                 self.bu[i] = self.bu[i] / ( len(jvec) + self.reg)
                 self.U[i] = np.squeeze(np.linalg.solve(matrix_,vector_))
             
-            # Update V
+            # Update item matrix V.
             X = X.tocsc()
             for j in range(self.V.shape[0]):
                 ivec = X.getcol(j).nonzero()[0]
@@ -46,10 +47,8 @@ class MatrixFactorization():
                 self.bv[j] = self.bv[j] / ( len(ivec) + self.reg)
                 self.V[j] = np.squeeze(np.linalg.solve(matrix_,vector_))
 
- 
-                
+            # Calculate Training Error.
             self.error.append(self.loss(X))
-            
             print(f"Iteration {t:2d} :  Training Error = {self.error[-1]:3.4f}  Time = {time.time()-tstart:.2f}s")
             
         self.plot_loss()
@@ -58,19 +57,13 @@ class MatrixFactorization():
     def predict(self, x):
         u = (x - self.mu - self.bv)
         
-        # Calculate user bias.
-        n, bu = (0, 0)
-        for i,e in enumerate(x):
-            if not np.isnan(e):
-                n += 1
-                bu += u[i]
-        bu = bu/n
-        
+        n = x.size - np.isnan(x).sum()
+        bu = u[~np.isnan(x)].mean()
         u = u - bu
         
         # Calculate user feacture vector and anime feature covariance matrix.
         vu_, vcov_ = (0,0)
-        for i,e in enumerate(u):
+        for i,e in enumerate(x):
             if not np.isnan(e):
                 vu_ += self.V[i,:]*u[i]
                 vcov_ += np.outer(self.V[i,:], self.V[i,:])
@@ -102,26 +95,44 @@ class MatrixFactorization():
         plt.show()
 
     
-    def print_features(self, data):
-        for k in range(self.k):
-            jmax = self.V[:,k].argmax()
-            jmin = self.V[:,k].argmin()
-            idmax = data.cindex[jmax]
-            idmin = data.cindex[jmin]
-            amax = data.get_anime_by_id(idmax)
-            amin = data.get_anime_by_id(idmin)
-            str_ = (
-                f'Feature {k+1}:\n'
-                f'\tmax : ({self.V[jmax,k]:+2.1f}) {amax.title}\n'
-                f'\tmin : ({self.V[jmin,k]:+2.1f}) {amin.title}'
-            )
-            print(str_)
+
+def print_features(model, data, nfeatures=0) :
+    ''' 
+    Prints top and bottom scoring anime for nfeatures
+    features of model. 
+    '''
+
+    if model.k <= nfeatures:
+        print(f"Only {model.k} features in model.\
+                Printin first {model.k} features.")
+        nfeatures = model.k
+    elif nfeatures == 0:
+        print(f"Printing all {model.k} features.")
+        nfeatures = model.k
+    else:
+        print(f"Printing {nfeatures} of {model.k} features.")
+
+    for k in range(nfeatures):
+        jmax = model.V[:,k].argmax()
+        jmin = model.V[:,k].argmin()
+        idmax = data.cindex[jmax]
+        idmin = data.cindex[jmin]
+        amax = data.get_anime_by_id(idmax)
+        amin = data.get_anime_by_id(idmin)
+        str_ = (
+            f'Feature {k+1}:\n'
+            f'\tmax : ({model.V[jmax,k]:+2.1f}) {amax.title}\n'
+            f'\tmin : ({model.V[jmin,k]:+2.1f}) {amin.title}'
+        )
+        print(str_)
+
+    return None
 
     
     
 def get_user_anime_list(user_id):
     '''
-    Based on QasimK/mal-scraper
+    Based on QasimK/mal-scraper.
     Returns animelist of user 'user_id' as list of dictionaries. Keys:
         'name':     anime title
         'id_ref':   anime id
@@ -195,12 +206,13 @@ def get_score_vector_from_user_anime_list(user_anime_list, cindex):
 
 
 
-def prediction_to_dataframe(xhat, user_anime_list, cindex):
+def prediction_to_dataframe(xhat, user_anime_list, cindex, keep_all=False):
     
     prediction = pandas.Series(xhat, index=cindex)
     
-    watched = [a['id_ref'] for a in user_anime_list if a['id_ref'] in prediction.index]
-    prediction = prediction.drop(list(watched))  # Note: columns == anime_ids's
+    if not keep_all:
+        watched = [a['id_ref'] for a in user_anime_list if a['id_ref'] in prediction.index]
+        prediction = prediction.drop(list(watched))  # Note: columns == anime_ids's
     
     return prediction
     
