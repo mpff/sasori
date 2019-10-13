@@ -1,4 +1,5 @@
-import datasets, utils
+import animerec.datasets
+import animerec.utils
 import pickle
 from datetime import datetime
 
@@ -6,8 +7,8 @@ k = 40
 reg = 20.
 steps = 10
 
-data = datasets.MyAnimeList()
-model = utils.MatrixFactorization(k=k, reg=reg)
+data = animerec.datasets.MyAnimeList()
+model = animerec.utils.MatrixFactorization(k=k, reg=reg)
 model.fit(data.X,steps=steps)
 
 tstamp = datetime.now().strftime("%d-%m-%Y-%H:%M:%S")
