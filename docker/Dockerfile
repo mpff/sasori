@@ -3,17 +3,6 @@
 
 # docker build -t animerec_ide .
 
-# After the docker image has been built you can run it by
-
-# docker run -d -p 8787:8787 -e PASSWORD=??? --name sposm sposm_ide
-
-# Do not forget to set a passord, as depending on your configuration
-# the container might be accessible in the network!
-
-# Access your new integrated development environment in your browser
-
-# http://localhost:8787
-
 # When you are done, you can stop the container instance
 
 # docker stop animerec
