@@ -32,15 +32,26 @@ FROM ubuntu:18.04
 
 MAINTAINER Manuel Pfeuffer "pfeuferm@hu-berlin.de"
 
-RUN apt-get update 
-RUN apt-get install python3-pip
-RUN pip3 install — upgrade pip
 
-# The below invalidates the cache whenever the Head of the Github repo changes
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    python3-pip \
+    python3-setuptools \
+    && rm -rf /var/lib/apt/lists/*
+
+
+# This invalidates the cache whenever the Head of the Github repo changes
 ADD https://api.github.com/repos/mpff/animerec/git/refs/heads/master version.json
+RUN git clone https://github.com/mpff/animerec.git
 
-RUN sudo git clone https://github.com/mpff/animerec.git
 
-RUN pip3 install -r ~/animerec/requirements.txt
+RUN pip3 install -r /animerec/requirements.txt
 
-WORKDIR ~/animerec
+
+RUN groupadd -r developer
+RUN useradd -r -s /bin/false -g developer developer
+RUN chown -R developer:developer /animerec
+
+WORKDIR /animerec
+
+USER developer
