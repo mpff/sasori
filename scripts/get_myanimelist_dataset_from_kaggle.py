@@ -9,5 +9,5 @@ for file_ in ['AnimeList.csv', 'UserList.csv', 'UserAnimeList.csv']:
             --file {file_}\
             --path {path}\
             azathoth42/myanimelist')
-    os.system(f'unzip {path+file_} -d {path}')
+    os.system(f'unzip {path+file_}.zip -u -d {path}')
     os.system(f'rm {path+file_}.zip')
