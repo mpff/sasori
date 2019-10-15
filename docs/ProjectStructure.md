@@ -11,7 +11,7 @@ In this file I want to give a 'high'-level overview of this projects directory s
 
 #### train
 5. `test_can_run_train_job.py`
-6. `train_model_and_save_to_pickle.py`
+6. `train_model_and_save_to_pickle.py` --> `model/model.pickle`, `model/anime-ids.pickle`
 7. `test_can_make_prediction.py`
 
 
@@ -27,6 +27,9 @@ Contains the core package.
 Contains the raw and pickled datasets.
   * `/data/raw/*` : Contains the raw MAL data downloaded from Kaggle by `get_myanimelist_dataset_from_kaggle.py`.
   * `/data/*.pickle` : Contains pickled list of all animes in the dataset created by `pickle_myanimelist_dataset.py`
+  
+#### `/model`
+Contains the latest trained model and an anime identifier file that allows mapping columns in the model to anime ids.
 
 #### `/scripts`
 Contains the scripts used by make to download and pickle datasets and train models.
