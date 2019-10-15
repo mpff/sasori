@@ -57,8 +57,10 @@ class MatrixFactorization():
     def predict(self, x):
         u = (x - self.mu - self.bv)
         
-        n = x.size - np.isnan(x).sum()
-        bu = u[~np.isnan(x)].mean()
+        w = ~np.isnan(x)
+        n = w.sum()
+        
+        bu = u[w].mean()
         u = u - bu
         
         # Calculate user feacture vector and anime feature covariance matrix.
@@ -67,6 +69,12 @@ class MatrixFactorization():
             if not np.isnan(e):
                 vu_ += self.V[i,:]*u[i]
                 vcov_ += np.outer(self.V[i,:], self.V[i,:])
+        vcov_ = np.linalg.inv(vcov_)
+        
+        
+        vu_ = np.dot(self.V[w,:].T, u[w])
+        vcov_ = np.outer(self.V[w,:], self.V[w,:])
+        print(vcov_)
         vcov_ = np.linalg.inv(vcov_)
     
         # Predict scores.
@@ -147,7 +155,7 @@ def get_user_anime_list(user_id):
         url = f'https://myanimelist.net/animelist/{user_id}/load.json?offset={len(anime)}&status=7'
         response = requests.get(url)
 
-        time.sleep(1)  # TODO: smarter wait
+        time.sleep(1.5)  # TODO: smarter wait
 
         if not response.ok:  # Raise an exception
             # TODO: build an actual exception
