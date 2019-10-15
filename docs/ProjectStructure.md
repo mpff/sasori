@@ -6,13 +6,10 @@ In this file I want to give a 'high'-level overview of this projects directory s
 #### build
 1. `test_can_access_kaggle.py`
 2. `get_myanimelist_dataset_from_kaggle.py` --> `data/raw/*`
-3. `test_can_load_dataset.py`
-4. `pickle_myanimelist_dataset.py` --> `data/*.pickle`
+3. `pickle_myanimelist_dataset.py` --> `data/*.pickle`
 
 #### train
-5. `test_can_run_train_job.py`
-6. `train_model_and_save_to_pickle.py` --> `model/model.pickle`, `model/anime-ids.pickle`
-7. `test_can_make_prediction.py`
+4. `train_model_and_save_to_pickle.py` --> `model/model.pickle`, `model/anime-ids.pickle`
 
 
 ### Directory Structure
