@@ -3,7 +3,7 @@ In this file I want to give a 'high'-level overview of this projects directory s
 
 ### Make
 
-#### build
+#### data
 1. `test_can_access_kaggle.py`
 2. `get_myanimelist_dataset_from_kaggle.py` --> `data/raw/*`
 3. `pickle_myanimelist_dataset.py` --> `data/*.pickle`
