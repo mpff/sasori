@@ -1,18 +1,27 @@
-import animerec.datasets
-import animerec.utils
+import os
+import sys
 import pickle
-from datetime import datetime
+
+
+def get_script_path():
+    return os.path.dirname(os.path.realpath(sys.argv[0]))
+
+sys.path.append(get_script_path()+"/..")
+
+
+from animerec import utils
+
 
 k = 40
 reg = 20.
 steps = 10
 
-data = animerec.datasets.MyAnimeList()
-model = animerec.utils.MatrixFactorization(k=k, reg=reg)
-model.fit(data.X,steps=steps)
+pickle_in = open("data/scores.pickle", "rb")
+X = pickle.load(pickle_in)
+pickle_in.close()
 
-tstamp = datetime.now().strftime("%d-%m-%Y-%H:%M:%S")
-opath = f"{tstamp}_k={k}_reg={reg:.1f}.pickle"
+model = utils.MatrixFactorization(k=k, reg=reg)
+model.fit(X,steps=steps)
 
 pickle_out = open("model.pickle", "wb")
 pickle.dump(model,pickle_out)

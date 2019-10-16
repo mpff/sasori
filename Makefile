@@ -16,7 +16,8 @@ help:
 all: $(TARGETS)
 
 
-train: data/animes.pickle data/users.pickle data/items.pickle data/scores.pickle
+train: data/scores.pickle
+	python scripts/train_model_and_save_to_pickle.py
 
 
 data: data/animes.pickle data/users.pickle data/items.pickle data/scores.pickle
