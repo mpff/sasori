@@ -40,9 +40,13 @@ for chunk in tqdm(reader):
 scores = vstack(chunks, format="csc")
 
 
-# Save to .pickle
-for obj in ["animes", "items", "users", "scores"]:
+# Save data files to .pickle
+for obj in ["animes", "scores"]:
     pickle_out = open(f"data/{obj}.pickle", "wb")
     pickle.dump(globals()[obj],pickle_out)
     pickle_out.close()
 
+# Save item index file to model/item-id.pickle
+pickle_out = open(f"model/item-id.pickle", "wb")
+pickle.dump(items, pickle_out)
+pickle_out.close()
