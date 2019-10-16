@@ -9,7 +9,7 @@ def get_script_path():
 sys.path.append(get_script_path()+"/..")
 
 
-from animerec import utils
+from animerec import models
 
 
 k = 40
@@ -20,7 +20,7 @@ pickle_in = open("data/scores.pickle", "rb")
 X = pickle.load(pickle_in)
 pickle_in.close()
 
-model = utils.MatrixFactorization(k=k, reg=reg)
+model = models.MatrixFactorization(k=k, reg=reg)
 model.fit(X,steps=steps)
 
 pickle_out = open("model.pickle", "wb")
