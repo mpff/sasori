@@ -108,4 +108,3 @@ def prediction_to_dataframe(xhat, user_anime_list, cindex, keep_all=False):
         watched = [a['id_ref'] for a in user_anime_list if a['id_ref'] in prediction.index]
         prediction = prediction.drop(list(watched))  # Note: columns == anime_ids's
     return prediction
-    

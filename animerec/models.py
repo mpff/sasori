@@ -60,34 +60,22 @@ class MatrixFactorization():
         self.plot_loss()
         
         
-    def predict(self, x):
-        u = (x - self.mu - self.bv)
+    def predict(self, r):
+        rb = (r - self.mu - self.bv)
+        w = ~numpy.isnan(r)
         
-        w = ~numpy.isnan(x)
-        n = w.sum()
+        # Create (1,features) item vector.
+        V = numpy.c_[ numpy.ones(self.V.shape[0]), self.V ]
         
-        bu = u[w].mean()
-        u = u - bu
-        
-        # Calculate user feacture vector and anime feature covariance matrix.
-        vu_, vcov_ = (0,0)
-        for i,e in enumerate(x):
-            if not numpy.isnan(e):
-                vu_ += self.V[i,:]*u[i]
-                vcov_ += numpy.outer(self.V[i,:], self.V[i,:])
-        vcov_ = numpy.linalg.inv(vcov_)
-        
-        
-        vu_ = numpy.dot(self.V[w,:].T, u[w])
-        vcov_ = numpy.outer(self.V[w,:], self.V[w,:])
-        print(vcov_)
-        vcov_ = numpy.linalg.inv(vcov_)
-    
+        # Predict (bias, features) user vector.
+        vector = numpy.dot(V[w,:].T, rb[w])
+        matrix = V[w,:].T.dot(V[w,:]) + self.reg * numpy.eye(self.k+1)
+        xhat = numpy.linalg.solve(matrix, vector)
+                
         # Predict scores.
-        uhat = vcov_.dot(vu_)
-        xhat = uhat.dot(self.V.T) + bu + self.bv + self.mu
+        rhat = xhat[1:].dot(V[:,1:].T) + xhat[0] + self.bv + self.mu
         
-        return xhat
+        return rhat
            
             
     def loss(self, X):
