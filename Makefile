@@ -16,11 +16,13 @@ help:
 all: $(TARGETS)
 
 
-train: data/scores.pickle
+train: model/model.pickle model/item-id.pickle
+
+model/model.pickle: data/scores.pickle
 	python scripts/train_model_and_save_to_pickle.py
 
 
-data: data/animes.pickle data/users.pickle data/items.pickle data/scores.pickle
+data: data/animes.pickle data/users.pickle data/scores.pickle model/item-id.pickle 
 
 data/animes.pickle data/users.pickle data/items.pickle: data/scores.pickle
 
