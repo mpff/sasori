@@ -107,6 +107,7 @@ def get_score_vector_from_user_anime_list(user_anime_list, cindex):
 def prediction_to_dataframe(xhat, user_anime_list, cindex, keep_all=False):
     prediction = pandas.Series(xhat, index=cindex)
     if not keep_all:
-        watched = [a['id_ref'] for a in user_anime_list if a['id_ref'] in prediction.index]
-        prediction = prediction.drop(list(watched))  # Note: columns == anime_ids's
+        user_anime_list = [anime for anime in user_anime_list if anime['status'] == 2]
+        completed = [a['id_ref'] for a in user_anime_list if a['id_ref'] in prediction.index]
+        prediction = prediction.drop(list(completed))  # Note: columns == anime_ids's
     return prediction
