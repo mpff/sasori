@@ -94,7 +94,9 @@ def get_user_anime_list_from_json(json):
 def get_score_vector_from_user_anime_list(user_anime_list, cindex):
     vec = pandas.Series(index=cindex)
     for anime in user_anime_list:
-        if anime['status'] not in [2,4]:  # Only completed and dropped animes.
+#        if anime['status'] not in [2,4]:  # Only completed and dropped animes.
+#            continue
+        if anime['score'] == 0:
             continue
         vec[anime['id_ref']] = anime['score']
     vec = vec[cindex]
