@@ -57,8 +57,6 @@ class MatrixFactorization():
             self.error.append(self.loss(X))
             print(f"Iteration {t:2d} :  Training Error = {self.error[-1]:3.4f}  Time = {time.time()-tstart:.2f}s")
             
-        self.plot_loss()
-        
         
     def predict(self, r):
         rb = (r - self.mu - self.bv)
@@ -89,10 +87,3 @@ class MatrixFactorization():
             E += resd.dot(resd.T)
             N += len(ivec)
         return E[0,0] / N
-    
-    
-    def plot_loss(self):
-        plt.plot(self.error,color="C0", label="Training Error")
-        plt.legend()
-        plt.show()
-
