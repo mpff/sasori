@@ -4,6 +4,7 @@ import numpy
 
 from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.utils import check_array, check_random_state
+from sklearn.metrics import make_scorer
 
 
 
@@ -19,7 +20,7 @@ class MatrixFactorization(BaseEstimator, RegressorMixin):
     n_features : integer, default: 40
         Number of features.
 
-    reg : double, default: 0.
+    reg : double, default: 1.
         Constant that multiplies the regularization terms. Set it to zero to
         have no regularization.
 
@@ -44,7 +45,7 @@ class MatrixFactorization(BaseEstimator, RegressorMixin):
     '''
 
     
-    def __init__(self, n_features=40, reg=0., max_iter=200, random_state=0, verbose=False):
+    def __init__(self, n_features=40, reg=1., max_iter=200, random_state=0, verbose=False):
         self.n_features = n_features
         self.reg = reg
         self.max_iter = max_iter
@@ -66,6 +67,7 @@ class MatrixFactorization(BaseEstimator, RegressorMixin):
         ------
         self
         '''
+        tstart = time.time()
 
         X = check_array(X, accept_sparse=('csr', 'csc'), dtype=float)
         self.random_state_ = check_random_state(self.random_state)
@@ -76,11 +78,11 @@ class MatrixFactorization(BaseEstimator, RegressorMixin):
         self.bv_ = numpy.zeros(X.shape[1])
         self.mu_ = X.data.mean()
         
-        tstart = time.time()
         self.error_ = [self.loss(X)]
-        print(f"Iteration  0 :  Training Error = {self.error_[-1]:3.4f}  Time = {time.time()-tstart:.2f}s")
+
+        print(f"Initialization :  Training Error = {self.error_[-1]:3.4f}  ({time.time()-tstart:.2f}s)")
         
-        for t in range(1,max_iter+1):
+        for t in range(1,self.max_iter+1):
             tstart = time.time()
             
             # Update user matrix U.
@@ -106,27 +108,31 @@ class MatrixFactorization(BaseEstimator, RegressorMixin):
             # Calculate Training Error.
             self.error_.append(self.loss(X))
             if self.verbose == True:
-                print(f"Iteration {t:2d} :  Training Error = {self.error_[-1]:3.4f}  Time = {time.time()-tstart:.2f}s")
+                print(f"Iteration {t:2d} :  Training Error = {self.error_[-1]:3.4f}  ({time.time()-tstart:.2f}s)")
 
         return self
             
         
-    def predict(self, r):
-        rb = (r - self.mu_ - self.bv_)
-        w = ~numpy.isnan(r)
-        
-        # Create (1,features) item vector.
+    def predict(self, X):
+
+        X = check_array(X, accept_sparse=('csr', 'csc'), dtype=float)
+
+        Xhat = numpy.zeros(X.shape)
         V = numpy.c_[ numpy.ones(self.V_.shape[0]), self.V_ ]
+
+        X.data = X.data - self.mu_
         
-        # Predict (bias, features) user vector.
-        vector = numpy.dot(V[w,:].T, rb[w])
-        matrix = V[w,:].T.dot(V[w,:]) + self.reg * numpy.eye(self.n_features+1)
-        xhat = numpy.linalg.solve(matrix, vector)
-                
-        # Predict scores.
-        rhat = xhat[1:].dot(V[:,1:].T) + xhat[0] + self.bv_ + self.mu_
-        
-        return rhat
+        # Predict (bias, features) user matrix.
+        X = X.tocsr()
+        for i in range(X.shape[0]):
+            jvec = X.getrow(i).nonzero()[1]
+            vector = numpy.dot(X[i,jvec] - self.bv_[jvec], V[jvec]).T
+            matrix = V[jvec].T.dot(V[jvec]) + numpy.eye(self.n_features+1) * self.reg
+            xhat = numpy.linalg.solve(matrix, vector)
+            Xhat[i,:] = xhat[1:].T.dot(V[:,1:].T) + xhat[0] + self.bv_ + self.mu_
+
+        return Xhat
+
            
             
     def loss(self, X):
@@ -140,3 +146,6 @@ class MatrixFactorization(BaseEstimator, RegressorMixin):
             E += resd.dot(resd.T)
             N += len(ivec)
         return E[0,0] / N
+
+
+    score = make_scorer(loss, greater_is_better=False)
