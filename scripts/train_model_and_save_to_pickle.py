@@ -6,12 +6,10 @@ import pickle
 
 def get_script_path():
     return os.path.dirname(os.path.realpath(sys.argv[0]))
-
 sys.path.append(get_script_path()+"/..")
 
 
-from sklearn.model_selection import train_test_split
-from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import GridSearchCV, train_test_split
 
 from animerec.models import MatrixFactorization as MF
 
@@ -28,8 +26,8 @@ X = pickle.load(pickle_in)
 pickle_in.close()
 
 
-Xtrain, Xtest = train_test_split(X, test_size=0.1)
-grid_search = GridSearchCV(MF(), param_grid, n_jobs=-1, verbose=True)
+Xtrain, Xtest = train_test_split(X, test_size=0.1, shuffle=True, random_state=123)
+grid_search = GridSearchCV(MF(), param_grid, cv=5, n_jobs=-1, verbose=3)
 
 t0 = time.time()
 grid_search.fit(Xtrain)
