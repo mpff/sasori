@@ -45,9 +45,10 @@ class MatrixFactorization(BaseEstimator, RegressorMixin):
     '''
 
     
-    def __init__(self, n_features=40, reg=1., max_iter=200, random_state=0, verbose=False):
+    def __init__(self, n_features=40, reg=1., tol=1e-3, max_iter=200, random_state=0, verbose=False):
         self.n_features = n_features
         self.reg = reg
+        self.tol = tol
         self.max_iter = max_iter
         self.random_state = random_state
         self.verbose = verbose
@@ -70,52 +71,59 @@ class MatrixFactorization(BaseEstimator, RegressorMixin):
         tstart = time.time()
 
         X = check_array(X, accept_sparse=('csr', 'csc'), dtype=float)
+        X = X.tocsr()
+
         self.random_state_ = check_random_state(self.random_state)
         
-        self.U_ = self.random_state_.randn(X.shape[0],self.n_features)
+        U = self.random_state_.randn(X.shape[0],self.n_features)
         self.V_ = self.random_state_.randn(X.shape[1],self.n_features)
-        self.bu_ = numpy.zeros(X.shape[0])
+        bu = numpy.zeros(X.shape[0])
         self.bv_ = numpy.zeros(X.shape[1])
         self.mu_ = X.data.mean()
         
         self.error_ = [self.loss(X)]
 
-        print(f"Initialization :  Training Error = {self.error_[-1]:3.4f}  ({time.time()-tstart:.2f}s)")
+        if self.verbose:
+            print(f"Init          :  Training Error = {self.error_[-1]:3.4f}  ({time.time()-tstart:.2f}s)")
         
-        for t in range(1,self.max_iter+1):
+        for n_iter in range(1,self.max_iter+1):
             tstart = time.time()
             
             # Update user matrix U.
-            X = X.tocsr()
-            for i in range(self.U_.shape[0]):
+            for i in range(U.shape[0]):
                 jvec = X.getrow(i).nonzero()[1]
                 matrix_ = self.V_[jvec].T.dot(self.V_[jvec]) + numpy.eye(self.n_features) * self.reg
-                vector_ = (X[i,jvec] - (self.bu_[i] + self.bv_[jvec] + self.mu_)).dot(self.V_[jvec]).T
-                self.bu_[i] = (X[i,jvec] - self.V_[jvec].dot(self.U_[i]) - self.bv_[jvec] - self.mu_).sum()
-                self.bu_[i] = self.bu_[i] / ( len(jvec) + self.reg)
-                self.U_[i] = numpy.squeeze(numpy.linalg.solve(matrix_,vector_))
+                vector_ = (X[i,jvec] - (bu[i] + self.bv_[jvec] + self.mu_)).dot(self.V_[jvec]).T
+                bu[i] = (X[i,jvec] - self.V_[jvec].dot(U[i]) - self.bv_[jvec] - self.mu_).sum()
+                bu[i] = bu[i] / ( len(jvec) + self.reg)
+                U[i] = numpy.squeeze(numpy.linalg.solve(matrix_,vector_))
             
             # Update item matrix V.
             X = X.tocsc()
             for j in range(self.V_.shape[0]):
                 ivec = X.getcol(j).nonzero()[0]
-                matrix_ = self.U_[ivec].T.dot(self.U_[ivec]) + numpy.eye(self.n_features) * self.reg
-                vector_ = (X[ivec,j].T - self.bu_[ivec] - self.bv_[j] - self.mu_).dot(self.U_[ivec]).T
-                self.bv_[j] = (X[ivec,j].T - (self.U_[ivec].dot(self.V_[j]) + self.bu_[ivec] + self.mu_)).sum()
+                matrix_ = U[ivec].T.dot(U[ivec]) + numpy.eye(self.n_features) * self.reg
+                vector_ = (X[ivec,j].T - bu[ivec] - self.bv_[j] - self.mu_).dot(U[ivec]).T
+                self.bv_[j] = (X[ivec,j].T - (U[ivec].dot(self.V_[j]) + bu[ivec] + self.mu_)).sum()
                 self.bv_[j] = self.bv_[j] / ( len(ivec) + self.reg)
                 self.V_[j] = numpy.squeeze(numpy.linalg.solve(matrix_,vector_))
 
             # Calculate Training Error.
             self.error_.append(self.loss(X))
-            if self.verbose == True:
-                print(f"Iteration {t:2d} :  Training Error = {self.error_[-1]:3.4f}  ({time.time()-tstart:.2f}s)")
+            if self.verbose:
+                print(f"Iteration {n_iter:3d} :  Squared Reconstruction Error = {self.error_[-1]:3.4f}  ({time.time()-tstart:.2f}s)")
+            if self.error_[-1] / self.error_[0] <= self.tol:
+                if self.verbose:
+                    print("Converged at iteration", n_iter)
+                self.n_iter_ = n_iter
+                break
 
         return self
             
         
     def predict(self, X):
 
-        X = check_array(X, accept_sparse=('csr', 'csc'), dtype=float)
+        X = check_array(X, accept_sparse=('csc', 'csr'), dtype=float)
 
         Xhat = numpy.zeros(X.shape)
         V = numpy.c_[ numpy.ones(self.V_.shape[0]), self.V_ ]
@@ -136,16 +144,22 @@ class MatrixFactorization(BaseEstimator, RegressorMixin):
            
             
     def loss(self, X):
+
+        X = check_array(X, accept_sparse=('csr', 'csc'), dtype=float)
+
         N = 0.
         E = 0.
-        for j in range(self.V_.shape[0]):
-            ivec = X.getcol(j).nonzero()[0]
-            xtru = X[ivec,j].todense().T
-            xhat = self.U_[ivec].dot(self.V_[j].T) + self.bu_[ivec] + self.bv_[j] + self.mu_
-            resd = xtru - xhat
+
+        X = X.tocsr()
+        for i in range(X.shape[0]):
+            jvec = X.getrow(i).nonzero()[1]
+            xhat = self.predict(X.getrow(i))
+            resd = X[i,jvec] - xhat[:,jvec]
             E += resd.dot(resd.T)
-            N += len(ivec)
+            N += len(jvec)
         return E[0,0] / N
 
 
-    score = make_scorer(loss, greater_is_better=False)
+    def score(self, X):
+        score = -1.0 * self.loss(X)
+        return score
