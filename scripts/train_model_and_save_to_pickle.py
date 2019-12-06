@@ -16,7 +16,7 @@ from animerec.models import MatrixFactorization as MF
 
 param_grid = {
     'n_features': [5, 10, 25, 50, 100, 150, 200],
-    'reg': [0.1, 1, 10, 20, 50]
+    'reg': [0.1, 1, 10, 50]
 }
 
 
