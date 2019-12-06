@@ -8,7 +8,7 @@ from sklearn.metrics import make_scorer
 
 
 
-class MatrixFactorization(BaseEstimator, RegressorMixin):
+class MatrixFactorization(BaseEstimator):
     '''Perform Biased Sparse Matrix Factorization with Alternating Least
     Squares
 
