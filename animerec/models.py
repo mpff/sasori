@@ -71,8 +71,7 @@ class MatrixFactorization(BaseEstimator):
         '''
         tstart = time.time()
 
-        X = check_array(X, accept_sparse=('csr', 'csc'), dtype=float)
-        X = X.tocsr()
+        X = check_array(X, accept_sparse='csc', dtype=float)
 
         self.random_state_ = check_random_state(self.random_state)
         
@@ -82,7 +81,7 @@ class MatrixFactorization(BaseEstimator):
         self.bv_ = numpy.zeros(X.shape[1])
         self.mu_ = X.data.mean()
         
-        self.error_ = [self.loss(X)]
+        self.error_ = [self.loss_internal(X,U,bu)]
 
         if self.verbose:
             print(f"Init          :  Training Error = {self.error_[-1]:3.4f}  ({time.time()-tstart:.2f}s)")
@@ -90,6 +89,7 @@ class MatrixFactorization(BaseEstimator):
         for n_iter in range(1,self.max_iter+1):
             tstart = time.time()
             
+            X = X.tocsr()
             # Update user matrix U.
             for i in range(U.shape[0]):
                 jvec = X.getrow(i).nonzero()[1]
@@ -110,7 +110,7 @@ class MatrixFactorization(BaseEstimator):
                 self.V_[j] = numpy.squeeze(numpy.linalg.solve(matrix_,vector_))
 
             # Calculate Training Error.
-            self.error_.append(self.loss(X))
+            self.error_.append(self.loss_internal(X,U,bu))
             if self.verbose:
                 print(f"Iteration {n_iter:3d} :  Squared Reconstruction Error = {self.error_[-1]:3.4f}  ({time.time()-tstart:.2f}s)")
             if self.error_[-1] / self.error_[0] <= self.tol:
@@ -123,16 +123,12 @@ class MatrixFactorization(BaseEstimator):
             
         
     def predict(self, X):
-
-        X = check_array(X, accept_sparse=('csc', 'csr'), dtype=float)
-
+        X = check_array(X, accept_sparse='csr', dtype=float)
         Xhat = numpy.zeros(X.shape)
         V = numpy.c_[ numpy.ones(self.V_.shape[0]), self.V_ ]
 
-        X.data = X.data - self.mu_
-        
         # Predict (bias, features) user matrix.
-        X = X.tocsr()
+        X.data = X.data - self.mu_
         for i in range(X.shape[0]):
             jvec = X.getrow(i).nonzero()[1]
             vector = numpy.dot(X[i,jvec] - self.bv_[jvec], V[jvec]).T
@@ -145,13 +141,9 @@ class MatrixFactorization(BaseEstimator):
            
             
     def loss(self, X):
-
-        X = check_array(X, accept_sparse=('csr', 'csc'), dtype=float)
-
+        X = check_array(X, accept_sparse='csr', dtype=float)
         N = 0.
         E = 0.
-
-        X = X.tocsr()
         for i in range(X.shape[0]):
             jvec = X.getrow(i).nonzero()[1]
             xhat = self.predict(X.getrow(i))
@@ -164,3 +156,16 @@ class MatrixFactorization(BaseEstimator):
     def score(self, X):
         score = -1.0 * self.loss(X)
         return score
+
+
+    def loss_internal(self, X, U, bu):
+        N = 0.
+        E = 0.
+        for j in range(self.V_.shape[0]):
+            ivec = X.getcol(j).nonzero()[0]
+            xhat = U[ivec].dot(self.V_[j].T) + bu[ivec] + self.bv_[j] + self.mu_
+            resd = X[ivec,j].T - xhat
+            E += resd.dot(resd.T) 
+            N += len(ivec)
+        return E[0,0] / N
+
