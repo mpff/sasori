@@ -45,7 +45,7 @@ class MatrixFactorization(BaseEstimator):
     '''
 
     
-    def __init__(self, n_features=40, reg=1., tol=1e-3, max_iter=200,
+    def __init__(self, n_features=40, reg=1., tol=1e-4, max_iter=200,
                  random_state=0, verbose=False):
         self.n_features = n_features
         self.reg = reg
@@ -113,7 +113,7 @@ class MatrixFactorization(BaseEstimator):
             self.error_.append(self.loss_internal(X,U,bu))
             if self.verbose:
                 print(f"Iteration {n_iter:3d} :  Training Error = {self.error_[-1]:3.4f}  ({time.time()-tstart:.2f}s)")
-            if self.error_[-1] / self.error_[0] <= self.tol:
+            if (self.error_[-2] - self.error_[-1]) / self.error_[0] < self.tol:
                 if self.verbose:
                     print("Converged at iteration", n_iter)
                 self.n_iter_ = n_iter
