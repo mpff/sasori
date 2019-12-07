@@ -27,7 +27,7 @@ pickle_in.close()
 
 
 Xtrain, Xtest = train_test_split(X, test_size=0.1, shuffle=True, random_state=123)
-grid_search = RandomizedSearchCV(MF(), param_grid, n_iter=5, cv=5, verbose=3)
+grid_search = RandomizedSearchCV(MF(verbose=True), param_grid, n_iter=5, cv=5, verbose=3)
 
 t0 = time.time()
 grid_search.fit(Xtrain)

@@ -45,7 +45,8 @@ class MatrixFactorization(BaseEstimator):
     '''
 
     
-    def __init__(self, n_features=40, reg=1., tol=1e-3, max_iter=200, random_state=0, verbose=False):
+    def __init__(self, n_features=40, reg=1., tol=1e-3, max_iter=200,
+                 random_state=0, verbose=False):
         self.n_features = n_features
         self.reg = reg
         self.tol = tol
