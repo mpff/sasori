@@ -112,7 +112,7 @@ class MatrixFactorization(BaseEstimator):
             # Calculate Training Error.
             self.error_.append(self.loss_internal(X,U,bu))
             if self.verbose:
-                print(f"Iteration {n_iter:3d} :  Squared Reconstruction Error = {self.error_[-1]:3.4f}  ({time.time()-tstart:.2f}s)")
+                print(f"Iteration {n_iter:3d} :  Training Error = {self.error_[-1]:3.4f}  ({time.time()-tstart:.2f}s)")
             if self.error_[-1] / self.error_[0] <= self.tol:
                 if self.verbose:
                     print("Converged at iteration", n_iter)
