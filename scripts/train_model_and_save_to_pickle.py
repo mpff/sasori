@@ -9,14 +9,14 @@ def get_script_path():
 sys.path.append(get_script_path()+"/..")
 
 
-from sklearn.model_selection import GridSearchCV, train_test_split
+from sklearn.model_selection import RandomizedSearchCV, train_test_split
 
 from animerec.models import MatrixFactorization as MF
 
 
 param_grid = {
-    'n_features': [5, 10, 25, 50, 100, 150, 200],
-    'reg': [0.1, 1, 10, 50]
+    'n_features': [10, 50, 100, 200],
+    'reg': [0.001, 0.1, 1, 10, 100]
 }
 
 
@@ -27,7 +27,7 @@ pickle_in.close()
 
 
 Xtrain, Xtest = train_test_split(X, test_size=0.1, shuffle=True, random_state=123)
-grid_search = GridSearchCV(MF(), param_grid, cv=5, n_jobs=-1, verbose=3)
+grid_search = RandomizedSearchCV(MF(), param_grid, n_iter=5, cv=5, verbose=3)
 
 t0 = time.time()
 grid_search.fit(Xtrain)
