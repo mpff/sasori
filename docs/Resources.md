@@ -14,3 +14,9 @@
 
 ### Logistic Matrix Factorization
 * [Logistic Matrix Factorization for Implicit Feedback Data](http://stanford.edu/~rezab/nips2014workshop/submits/logmat.pdf)
+
+### Bayesian Personalized Ranking
+* [BPR: Bayesian Personalized Ranking from Implicit Feedback](https://arxiv.org/ftp/arxiv/papers/1205/1205.2618.pdf)
+
+### Maximum Margin Matrix Factorization
+* [Improving maximum margin matrix factorization](https://link.springer.com/content/pdf/10.1007/s10994-008-5073-7.pdf)
