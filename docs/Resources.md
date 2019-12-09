@@ -20,3 +20,6 @@
 
 ### Maximum Margin Matrix Factorization
 * [Improving maximum margin matrix factorization](https://link.springer.com/content/pdf/10.1007/s10994-008-5073-7.pdf)
+
+### Fast ALS-based Matrix Factorization
+* [Fast ALS-based Matrix Factorization for Explicit andImplicit Feedback Datasets](https://dl.acm.org/citation.cfm?id=1864726)
