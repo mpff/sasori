@@ -1,6 +1,8 @@
 Sasori
 ======
 
+**At the moment this README is more of a design documentation. Nothing actually works yet ;)**
+
 Sasori is a Python scikit 
 for building building recommender systems 
 that are serveable and scaleable.
