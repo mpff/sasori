@@ -20,37 +20,56 @@ class MatrixFactorization(BaseEstimator):
     n_features : integer, default: 40
         Number of features.
 
-    reg : double, default: 1.
+    reg : double, default: 0
         Constant that multiplies the regularization terms. Set it to zero to
         have no regularization.
 
+    tol : double, default: 1e-4
+        Stopping criterion. Stop if the training error changes by less than
+        [ TODO: Insert criterion here ].
+
     max_iter : integer, default: 200
         Maximum number of iterations before timing out.
+
+    n_iter : integer, default: None
+        Set this parameter if instead of using the tolerance stopping criteron
+        you want to perform n_iter ALS iterations.
 
     random_state : RandomState or an int seed (0 by default)
         A random number generator instance to define the state of the
         random permutations generator.
 
     verbose : bool, default=False
-        Whether to be verbose.
+        Toggle verbose output.
 
 
     Attributes
     ----------
-    error_ : number
-        Reconstruction error.
+    mu_ : float
+        Mean Rating in training data `X`.
+
+    V_ : array, (n_items, n_features)
+        Trained item features.
+
+    reconstruction_error_ : float
+        Difference between training data `X` and reconstructed data.
+
+    item_ids_ : dict
+        Matches item ids from the training data to inner ids.
+
+    n_items_ : int
+        Number of items, the model was fit for. 
 
     n_iter_ : int
         Actual number of iterations.
+
     '''
 
     
-    def __init__(self, n_features=40, reg=1., tol=1e-4, max_iter=200,
-                 random_state=0, verbose=False):
+    def __init__(self, n_features=40, reg=0., n_iter=40, random_state=0, verbose=False):
         self.n_features = n_features
         self.reg = reg
-        self.tol = tol
-        self.max_iter = max_iter
+        self.n_iter = n_iter
         self.random_state = random_state
         self.verbose = verbose
 
@@ -60,7 +79,7 @@ class MatrixFactorization(BaseEstimator):
 
         Parameters
         ----------
-        X : {array-like, sparse matrix}, shape (n_users, n_items)
+        X : , shape (n_users, n_items)
             Data matrix to be decomposed
 
         y : Ignored
@@ -69,103 +88,48 @@ class MatrixFactorization(BaseEstimator):
         ------
         self
         '''
-        tstart = time.time()
 
-        X = check_array(X, accept_sparse='csc', dtype=float)
-
+        tstart_ = time.time()
         self.random_state_ = check_random_state(self.random_state)
-        
-        U = self.random_state_.randn(X.shape[0],self.n_features)
-        self.V_ = self.random_state_.randn(X.shape[1],self.n_features)
-        bu = numpy.zeros(X.shape[0])
-        self.bv_ = numpy.zeros(X.shape[1])
-        self.mu_ = X.data.mean()
-        
-        self.error_ = [self.loss_internal(X,U,bu)]
 
         if self.verbose:
-            print(f"Init          :  Training Error = {self.error_[-1]:3.4f}  ({time.time()-tstart:.2f}s)")
-        
-        for n_iter in range(1,self.max_iter+1):
-            tstart = time.time()
-            
-            X = X.tocsr()
-            # Update user matrix U.
-            for i in range(U.shape[0]):
-                jvec = X.getrow(i).nonzero()[1]
-                matrix_ = self.V_[jvec].T.dot(self.V_[jvec]) + numpy.eye(self.n_features) * self.reg
-                vector_ = (X[i,jvec] - (bu[i] + self.bv_[jvec] + self.mu_)).dot(self.V_[jvec]).T
-                bu[i] = (X[i,jvec] - self.V_[jvec].dot(U[i]) - self.bv_[jvec] - self.mu_).sum()
-                bu[i] = bu[i] / ( len(jvec) + self.reg)
-                U[i] = numpy.squeeze(numpy.linalg.solve(matrix_,vector_))
-            
-            # Update item matrix V.
-            X = X.tocsc()
-            for j in range(self.V_.shape[0]):
-                ivec = X.getcol(j).nonzero()[0]
-                matrix_ = U[ivec].T.dot(U[ivec]) + numpy.eye(self.n_features) * self.reg
-                vector_ = (X[ivec,j].T - bu[ivec] - self.bv_[j] - self.mu_).dot(U[ivec]).T
-                self.bv_[j] = (X[ivec,j].T - (U[ivec].dot(self.V_[j]) + bu[ivec] + self.mu_)).sum()
-                self.bv_[j] = self.bv_[j] / ( len(ivec) + self.reg)
-                self.V_[j] = numpy.squeeze(numpy.linalg.solve(matrix_,vector_))
+            print(f"Starting MatrixFactorization.")
 
-            # Calculate Training Error.
-            self.error_.append(self.loss_internal(X,U,bu))
+        if self.n_iter:
+            n_iter = self.n_iter
+        else:
+            n_iter = self.max_iter
+
+        self.V_ = self.random_state_.randn(X.shape[1],self.n_features)
+        U = self.random_state_.randn(X.shape[0],self.n_features)
+
+        
+        self.bv_ = numpy.zeros(X.shape[1])
+        bu = numpy.zeros(X.shape[0])
+
+        self.mu_ = X.data.mean()
+        
+        
+        for current_iter in range(n_iter):
             if self.verbose:
-                print(f"Iteration {n_iter:3d} :  Training Error = {self.error_[-1]:3.4f}  ({time.time()-tstart:.2f}s)")
-            if (self.error_[-2] - self.error_[-1]) / self.error_[0] < self.tol:
-                if self.verbose:
-                    print("Converged at iteration", n_iter)
-                self.n_iter_ = n_iter
-                break
+                print(f"Starting iteration {current_iter} of {n_iter}.")
+            # Do ALS step
+
+
+        if self.verbose:
+            print(f"Converged at iteration {current_iter}")
 
         return self
             
         
     def predict(self, X):
-        X = check_array(X, accept_sparse='csr', dtype=float)
-        Xhat = numpy.zeros(X.shape)
-        V = numpy.c_[ numpy.ones(self.V_.shape[0]), self.V_ ]
+        return None
 
-        # Predict (bias, features) user matrix.
-        X.data = X.data - self.mu_
-        for i in range(X.shape[0]):
-            jvec = X.getrow(i).nonzero()[1]
-            vector = numpy.dot(X[i,jvec] - self.bv_[jvec], V[jvec]).T
-            matrix = V[jvec].T.dot(V[jvec]) + numpy.eye(self.n_features+1) * self.reg
-            xhat = numpy.linalg.solve(matrix, vector)
-            Xhat[i,:] = xhat[1:].T.dot(V[:,1:].T) + xhat[0] + self.bv_ + self.mu_
-
-        return Xhat
-
-           
             
     def loss(self, X):
-        X = check_array(X, accept_sparse='csr', dtype=float)
-        N = 0.
-        E = 0.
-        for i in range(X.shape[0]):
-            jvec = X.getrow(i).nonzero()[1]
-            xhat = self.predict(X.getrow(i))
-            resd = X[i,jvec] - xhat[:,jvec]
-            E += resd.dot(resd.T)
-            N += len(jvec)
-        return E[0,0] / N
+        return None
 
 
     def score(self, X):
         score = -1.0 * self.loss(X)
         return score
-
-
-    def loss_internal(self, X, U, bu):
-        N = 0.
-        E = 0.
-        for j in range(self.V_.shape[0]):
-            ivec = X.getcol(j).nonzero()[0]
-            xhat = U[ivec].dot(self.V_[j].T) + bu[ivec] + self.bv_[j] + self.mu_
-            resd = X[ivec,j].T - xhat
-            E += resd.dot(resd.T) 
-            N += len(ivec)
-        return E[0,0] / N
-
